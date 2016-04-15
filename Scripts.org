@@ -1,0 +1,439 @@
+#+Title: Scripts for XRD research
+#+Author: Tongjie Chen
+#+LaTeX_HEADER: \usepackage{geometry}
+#+LaTeX_HEADER: \geometry{top=2.5cm, bottom=2cm, left=2cm, right=2cm}
+* Get Delta z
+** Clear the data
+1. Sort file according to elements
+2. Extract z coordinate of the same element
+3. Elimate duplicate values
+4. Sort z values
+5. Output z values of one element
+
+Seems so easy for a bash script to do. But need to convert to csv first or need to elimate duplicate spaces.
+#+begin_src sh 
+cat STO_Ge-log.XYZ.csv |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n
+#+end_src
+
+
+With single space as delimtaers, can use this
+
+#+begin_src sh :exports results
+cd /tmp
+cat /tmp/STO_Ge-log.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/no-dope.py
+#+end_src
+
+#+RESULTS:
+| Sr2-Sr3             |       Sr1-Sr2 |                O-Ge |
+| (3.6281686882499997 | 3.79627097648 | 1.1507247559799998) |
+
+*Ti30*
+#+begin_src sh :exports results
+cd /tmp
+cat /tmp/STO_Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
+#+end_src
+
+#+RESULTS:
+| Sr2-Sr3        |       Sr1-Sr2 |                O-Ge |
+| (4.09643801729 | 4.09287482618 | 0.8682786403299998) |
+
+
+*Ti70*
+#+begin_src sh :exports results
+cd /tmp
+cat /tmp/STO_Ti70.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
+#+end_src
+
+#+RESULTS:
+| Sr2-Sr3             |           Sr1-Sr2 |                O-Ge |
+| (3.8547648583900003 | 3.879572864169999 | 1.7587670927399994) |
+
+#+begin_src sh 
+cd /tmp
+cat /tmp/STO_Ge-log.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/no-dope.py
+cat /tmp/STO_Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py 
+cat /tmp/STO_Ti70.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
+#+end_src
+
+#+RESULTS:
+| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
+| (3.769922874959999,  | 3.7067643724100012, | 1.3230385809400005) |
+| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
+| (4.00698,            | 4.0069799999999995, | 1.9796206029399999) |
+| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
+| (3.8611548203599995, | 3.8935057336900005, | 1.5150977290799998) |
+
+Elimate duplicate spaces
+#+begin_src sh 
+sed 's/  */ /g'
+#+end_src
+
+Delete first two lines, http://stackoverflow.com/questions/8857705/deleting-the-first-two-lines-of-a-file-using-bash-or-awk-or-sed-or-whatever
+#+begin_src sh 
+tail -n+3 file
+#+end_src
+
+** Calculate values
+Then it is time to calculate the $\delta z$.
+1. Pass the output to python stdin
+2. Use array to store different values for same elements
+3. Sort the array for the same element
+4. Output Sr3-Sr2, Sr2-Sr1
+5. Output O1-Ge(-1)
+
+For No Zr.
+#+begin_src python :tangle /tmp/no-dope.py
+#!/usr/bin/python2
+import csv
+import sys
+import numpy as np
+Sr=list([])
+O=list([])
+Ti=list([])
+Ge=list([])
+reader = csv.reader(sys.stdin)
+for row in reader:
+    if (row[0]) == "Ge":
+        Ge.append(float(row[1]))
+    elif (row[0]) == "O":
+        O.append(float(row[1]))
+    elif (row[0]) == "Ti" :
+        Ti.append(float(row[1]))
+    elif (row[0]) == "Sr" :
+        Sr.append(float(row[1]))
+
+Ge.sort()
+O.sort()
+Ti.sort()
+Sr.sort()
+print("Sr2-Sr3|Sr1-Sr2|O-Ge")
+print(Sr[-1]-Sr[-2], Sr[-2]-Sr[-3], O[0]-Ge[-1])
+#+end_src
+
+#+RESULTS:
+
+#+begin_src python :tangle /tmp/dope.py
+#!/usr/bin/python2
+import csv
+import sys
+import numpy as np
+Sr=list([])
+O=list([])
+Ti=list([])
+Ge=list([])
+reader = csv.reader(sys.stdin)
+for row in reader:
+    if (row[0]) == "ge":
+        Ge.append(float(row[1]))
+    elif (row[0]) == "o2m":
+        O.append(float(row[1]))
+    elif (row[0]) == "ti4p" :
+        Ti.append(float(row[1]))
+    elif (row[0]) == "zr" :
+        Ti.append(float(row[1]))
+    elif (row[0]) == "sr2p" :
+        Sr.append(float(row[1]))
+
+Ge.sort()
+O.sort()
+Ti.sort()
+Sr.sort()
+print("Sr2-Sr3|Sr1-Sr2|Sr-Ge")
+print(Sr[-1]-Sr[-2], Sr[-2]-Sr[-3], Sr[0]-Ge[-1])
+#+end_src
+
+After tangle
+#+begin_src sh 
+cd /tmp
+tail -n+2 no-dope.py > temp.py ;mv temp.py no-dope.py
+tail -n+2 dope.py > temp.py ;mv temp.py dope.py
+chmod +x dope.py no-dope.py
+tail -n+2 plot.py > temp.py ;mv temp.py plot.py
+chmod +x plot.py
+tail -n+2 pl.py > temp.py ;mv temp.py pl.py
+chmod +x pl.py
+#+end_src
+
+#+RESULTS:
+
+
+Plot 5 layers of difference
+#+begin_src python :tangle /tmp/plot.py
+#!/usr/bin/python3
+import csv
+import sys
+import numpy as np
+import matplotlib.pyplot as plt
+
+Sr=list([])
+O=list([])
+Ti=list([])
+Ge=list([])
+reader = csv.reader(sys.stdin)
+for row in reader:
+    if (row[0]) == "ge":
+        Ge.append(float(row[1]))
+    elif (row[0]) == "o2m":
+        O.append(float(row[1]))
+    elif (row[0]) == "ti4p" :
+        Ti.append(float(row[1]))
+    elif (row[0]) == "zr" :
+        Ti.append(float(row[1]))
+    elif (row[0]) == "sr2p" :
+        Sr.append(float(row[1]))
+
+    if (row[0]) == "Ge":
+        Ge.append(float(row[1]))
+    elif (row[0]) == "O":
+        O.append(float(row[1]))
+    elif (row[0]) == "Ti" :
+        Ti.append(float(row[1]))
+    elif (row[0]) == "Sr" :
+        Sr.append(float(row[1]))
+        
+
+TiSr=Sr+Ti
+
+Ge.sort()
+O.sort()
+Ti.sort()
+Sr.sort()
+TiSr.sort()
+# print("Sr2-Sr3|Sr1-Sr2|O-Ge|Middle O-Middle Sr| Margin O-Margin Ti bottom")
+# print(Sr[-1]-Sr[-2], Sr[-2]-Sr[-3], O[0]-Ge[-1], O[2]-Sr[1], O[1]-Ti[0])
+
+# Remove duplicate terms
+temp=[]
+for i in TiSr:
+       if i not in temp:
+          temp.append(i)
+
+TiSr=temp
+x=list([])
+y=list([])
+for i in range(0,5):
+    x.append(i+1) 
+    y.append(float(O[i])-float(TiSr[i]))
+#    print(i+1, float(O[i])-float(TiSr[i]))
+    
+# # plt.plot(x,y)
+# # plt.savefig(sys.argv[1])
+# # plt.show()
+# # print("end of program")
+# # print(O, TiSr)
+# f=open(sys.argv[2],'a')
+# np.savetxt(f, [y], fmt='%1.4e')
+# f.close()
+print(Sr[-1]-Sr[-2], Sr[-2]-Sr[-3], Sr[0]-Ge[-1], y)
+#+end_src
+
+#+RESULTS:
+
+
+From this http://stackoverflow.com/questions/1729824/transpose-a-file-in-bash
+#+begin_src sh 
+awk '
+{ 
+    for (i=1; i<=NF; i++)  {
+        a[NR,i] = $i
+    }
+}
+NF>p { p = NF }
+END {    
+    for(j=1; j<=p; j++) {
+        str=a[1,j]
+        for(i=2; i<=NR; i++){
+            str=str" "a[i,j];
+        }
+        print str
+    }
+}' $1
+#+end_src
+
+Use pylab to plot
+http://stackoverflow.com/questions/11248812/matplotlib-basic-plotting-from-text-file
+#+begin_src sh :tangle /tmp/pl.py
+#!/usr/bin/python2
+import pylab
+import sys
+
+filename=sys.argv[1]
+data = pylab.loadtxt(filename)
+pylab.plot(data[:,0], data[:,2],label="Ti30")
+pylab.plot(data[:,0], data[:,3],label="Ti70")
+pylab.plot(data[:,0], data[:,1],label="Ti100")
+pylab.legend()
+pylab.title("Delta z vs. position of atoms")
+pylab.ylabel("Delta z")
+pylab.xlabel("Position from bottom to top")
+pylab.savefig(sys.argv[2])
+#+end_src
+
+#+begin_src sh :tangle /tmp/dist.sh
+cd /tmp
+cat Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
+cat Ti70.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
+cat Ti100.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
+#+end_src
+
+#+RESULTS:
+| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
+| (3.77127964622,      | 3.7475276286300003, | 1.4958076839699999) |
+| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
+| (4.0117914608,       | 4.12898859328,      |      1.17746545362) |
+| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
+| (3.8549839742300005, | 3.875476635409999,  | 1.3405965107199993) |
+
+#+begin_src sh :tangle /tmp/plot.sh
+cd /tmp
+
+name=$1
+## for loop
+#!/bin/bash
+# for name in $(ls /home/tongjie/research/XRD/Data-xyz/); do
+#     echo item: $i
+# cd /home/tongjie/research/XRD/Data-xyz/$name
+# mv STO_Ge-log.XYZ Ti100.XYZ
+# mv STO_Ti30.XYZ Ti30.XYZ
+# mv STO_Ti70.XYZ Ti70.XYZ
+cat Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py Ti30.png Ti
+cat Ti70.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py Ti70.png Ti
+cat Ti100.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py Ti00.png Ti
+sed "1i 1 2 3 4 5" Ti >to.txt
+transpose.sh to.txt >tp.txt
+/tmp/pl.py tp.txt $name.png
+rm Ti
+# done
+
+mkdir $name
+mv Ti100.XYZ $name/
+mv Ti30.XYZ $name/
+mv Ti70.XYZ $name/
+mv $name.png $name/
+mv $name /home/tongjie/research/XRD/Data-xyz
+echo /home/tongjie/research/XRD/Data-xyz/$name/$name.png |parcellite -c
+
+#+end_src
+
+#+RESULTS:
+|                |
+| 3-3-log-reset6 |
+
+** Change run scripts
+
+#+begin_src sh 
+cd ~/sshfs
+i=3-65-log-8
+j=3-65-log-9
+sed -i s/$i/$j/g script70.csh
+sed -i s/$i/$j/g script30.csh
+sed -i s/$i/$j/g script00.csh
+#+end_src
+
+#+RESULTS:
+
+** Format output
+#+begin_src sh :tangle /tmp/format.sh
+#!/usr/bin/bash
+cd /tmp
+./dist.sh >test.txt
+sed -i "3d" test.txt
+sed -i "4d" test.txt
+sed -i s/,/\|/ test.txt
+sed -i s/,/\|/ test.txt
+paste 1col test.txt
+# |parcellite -c
+#+end_src
+
+Emacs nearly stuck when running this.
+
+** Get the least FOM orgmode
+#+begin_src sh 
+
+#+end_src
+
+** Extract FOM
+1. Give filenames, seperated 30, 70, 100
+2. Save filenames to odd lines of a file
+3. Extract FOM and save to even lines
+4. Use sed to combine the lines http://stackoverflow.com/questions/7841607/how-can-i-combine-odd-and-even-numbered-lines, http://stackoverflow.com/questions/9605232/merge-two-lines-into-one
+#+begin_src sh :tangle /tmp/run.sh
+#!/bin/bash
+#cd /tmp/sshfs/Raw-log
+cd /tmp/Raw-log
+Logfile=/tmp/FOMs.txt
+for i in `seq 1 9`; 
+do
+name=3-3-log-$i
+echo $name
+for Ti in 30 70 100; 
+do
+# filename=Ti$Ti-$name
+filename=Ti$Ti-log$i
+echo $filename
+echo $filename >>$Logfile
+python2 ~/Softwares/genx/genx.py --run $filename.hgx /tmp/temp.hgx --mgen 1 |grep FOM: |cut -d ' ' -f2 >>$Logfile
+# genx --run $filename.hgx /tmp/temp.hgx --mgen 1 |grep FOM: |cut -d ' ' -f2 >>$Logfile
+done
+echo $name >> /tmp/tables
+/tmp/format.sh >> /tmp/tables
+/tmp/plot.sh $name
+echo $i
+done
+sed 'N;s/\n/ /' -i $Logfile 
+mv $Logfile /tmp/$name-log
+mv /tmp/tables /tmp/$name-tables
+#+end_src
+
+#+RESULTS:
+
+#+begin_src example :tangle /tmp/1col
+Ti
+30
+70
+100
+#+end_src
+
+** Extract data 2
+1. Change to directory
+2. Extract data to print to a file
+3. Clean extra lines
+4. Combine with already XLS file
+#+begin_src sh :tangle /tmp/run2.sh
+for i in log R1; do
+for j in `seq 1 9`; do
+folder=8-8-$i-$j
+cd /home/tongjie/research/XRD/Data-xyz/$folder
+echo $folder
+cat Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py 
+cat Ti70.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py 
+cat Ti100.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py 
+done
+done
+#+end_src
+
+** After tangle
+#+begin_src sh 
+cd /tmp
+tail -n+2 no-dope.py > temp.py ;mv temp.py no-dope.py
+tail -n+2 dope.py > temp.py ;mv temp.py dope.py
+chmod +x dope.py no-dope.py
+tail -n+2 plot.py > temp.py ;mv temp.py plot.py
+chmod +x plot.py
+tail -n+2 pl.py > temp.py ;mv temp.py pl.py
+chmod +x pl.py
+chmod +x plot.sh format.sh run.sh
+chmod +x dist.sh
+tail -n+2 1col > temp.py ;mv temp.py 1col
+chmod +x run2.sh
+# rm /tmp/tables/
+# rm /tmp/FOMs
+ #+end_src
+
+#+RESULTS:
+** XYZ file atom name replace
+
+#+begin_src sh 
+cat $1 |sed s/ge/Ge/g |sed s/o2m/O/g |sed s/sr2p/Sr/g |sed s/zr/Zr/g |sed s/ti4p/Ti/g >$2
+#+end_src
+* Genetic algothrim

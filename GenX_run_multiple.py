@@ -15,7 +15,7 @@
 #      range(5,10) --> [5,6,7,8,9] (total of 5 repetitions starting with 5)
 #      [1]         --> [1] (one iteration with index 1)
 #iter_list = range(5)
-iter_list = [1,2,3,4,5]
+iter_list = [1,2]
 
 # figure of merit (FOM) to use
 # needs to be a list of strings, valid names are:
@@ -51,7 +51,7 @@ pop_size = 200                   # if use_pop_mult = False, population size
 
 # Generations
 use_max_generations = True       # absolute (T) or relative (F) maximum gen.
-max_generations = 3000           # if use_max_generations = True
+max_generations = 10000           # if use_max_generations = True
 max_generation_mult = 6          # if use_max_generations = False
 
 # Parallel processing

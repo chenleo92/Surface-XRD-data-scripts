@@ -6,7 +6,7 @@
 # choose what we want to export
 do_fom_log = 1         # FOM as a function of iteration
 do_final_tab = 1       # Export table (like in GenX File menu)
-do_error_bars = 1      # Calculate errors in the gx file (like GenX menu item)
+do_error_bars = 0      # Calculate errors in the gx file (like GenX menu item)
 do_last_foms = 0       # FOMs for all individuals in the last generation
 do_last_pars = 0       # Parameter values of all individuals in last generation
 do_all_foms = 0        # All FOMs for all individuals in the buffer
