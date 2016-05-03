@@ -211,11 +211,12 @@ for i in TiSr:
 TiSr=temp
 x=list([])
 y=list([])
-for i in range(0,5):
+for i in range(0,4):
     x.append(i+1) 
-    y.append(float(O[i])-float(TiSr[i]))
+#    y.append(float(O[i])-float(TiSr[i]))
 #    print(i+1, float(O[i])-float(TiSr[i]))
-    
+    y.append(float(O[i])-float(TiSr[i+1])) 
+   
 # # plt.plot(x,y)
 # # plt.savefig(sys.argv[1])
 # # plt.show()
@@ -271,18 +272,12 @@ pylab.savefig(sys.argv[2])
 
 #+begin_src sh :tangle /tmp/dist.sh
 cd /tmp
-cat Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
-cat Ti70.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
-cat Ti100.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/dope.py
+cat Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py
+cat Ti70.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py
+cat Ti100.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py
 #+end_src
 
 #+RESULTS:
-| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
-| (3.77127964622,      | 3.7475276286300003, | 1.4958076839699999) |
-| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
-| (4.0117914608,       | 4.12898859328,      |      1.17746545362) |
-| Sr2-Sr3              | Sr1-Sr2             |                O-Ge |
-| (3.8549839742300005, | 3.875476635409999,  | 1.3405965107199993) |
 
 #+begin_src sh :tangle /tmp/plot.sh
 cd /tmp
@@ -323,14 +318,28 @@ echo /home/tongjie/research/XRD/Data-xyz/$name/$name.png |parcellite -c
 
 #+begin_src sh 
 cd ~/sshfs
-i=3-65-log-8
-j=3-65-log-9
+i=f-9
+j=f-1
 sed -i s/$i/$j/g script70.csh
 sed -i s/$i/$j/g script30.csh
 sed -i s/$i/$j/g script00.csh
+sed -i s/$i/$j/g R1-script70.csh
+sed -i s/$i/$j/g R1-script30.csh
+sed -i s/$i/$j/g R1-script00.csh
+
 #+end_src
 
 #+RESULTS:
+
+#+begin_src sh
+bsub < R1-script00.csh
+bsub < R1-script30.csh
+bsub < R1-script70.csh
+bsub < script30.csh
+bsub < script70.csh
+bsub < script00.csh
+
+#+end_src
 
 ** Format output
 #+begin_src sh :tangle /tmp/format.sh
@@ -360,29 +369,34 @@ Emacs nearly stuck when running this.
 #+begin_src sh :tangle /tmp/run.sh
 #!/bin/bash
 #cd /tmp/sshfs/Raw-log
-cd /tmp/Raw-log
-Logfile=/tmp/FOMs.txt
+for fit in log R1;
+do
+cd /home/tongjie/research/XRD/Final/$fit
+#cd /tmp/no-O-surface/R1
+Logfile=~/tmp/FOMs.txt
 for i in `seq 1 9`; 
 do
-name=3-3-log-$i
+name=8-8-$fit-f-$i
 echo $name
 for Ti in 30 70 100; 
+# for Ti in 70; 
 do
-# filename=Ti$Ti-$name
-filename=Ti$Ti-log$i
+filename=Ti$Ti-$name
+# filename=Ti$Ti-log$i
 echo $filename
 echo $filename >>$Logfile
 python2 ~/Softwares/genx/genx.py --run $filename.hgx /tmp/temp.hgx --mgen 1 |grep FOM: |cut -d ' ' -f2 >>$Logfile
 # genx --run $filename.hgx /tmp/temp.hgx --mgen 1 |grep FOM: |cut -d ' ' -f2 >>$Logfile
 done
-echo $name >> /tmp/tables
-/tmp/format.sh >> /tmp/tables
+echo $name >> ~/tmp/tables
+/tmp/dist.sh >> ~/tmp/tables
 /tmp/plot.sh $name
 echo $i
 done
 sed 'N;s/\n/ /' -i $Logfile 
-mv $Logfile /tmp/$name-log
-mv /tmp/tables /tmp/$name-tables
+mv $Logfile ~/tmp/$name-log
+mv ~/tmp/tables ~/tmp/$name-tables
+done
 #+end_src
 
 #+RESULTS:
@@ -402,7 +416,7 @@ Ti
 #+begin_src sh :tangle /tmp/run2.sh
 for i in log R1; do
 for j in `seq 1 9`; do
-folder=8-8-$i-$j
+folder=8-8-$i-n-$j
 cd /home/tongjie/research/XRD/Data-xyz/$folder
 echo $folder
 cat Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g' |cut -d, -f1,4 |sort |uniq |sort -k1,2V -k2,1n |/tmp/plot.py 
@@ -436,4 +450,44 @@ chmod +x run2.sh
 #+begin_src sh 
 cat $1 |sed s/ge/Ge/g |sed s/o2m/O/g |sed s/sr2p/Sr/g |sed s/zr/Zr/g |sed s/ti4p/Ti/g >$2
 #+end_src
+
+** Clean data
+#+begin_src sh 
+sed -e '1d;5d;9d;13d;17d;21d;25d;29d;33d' 8-8-log-n-9-tables >log
+sed -e 's/\[//g' R1 |sed s/,//g |sed s/\]//g >R1-2
+paste -d ' '
+#+end_src
 * Genetic algothrim
+* From XYZ create GenX script
+** Shell
+1. Strip first two lines of XYZ file
+2. Convert to csv and seperate columns
+3. Using first column as id and element
+4. Second column as x
+5. Third as y
+6. Fourth as z
+7. Write to file
+#+begin_src sh 
+tail -n+3 Ti30.XYZ |sed -r 's/^\s+//;s/\s+/,/g'|cut -d, -f1,2,3,4
+
+
+#+end_src
+** Python
+1. Read from third line
+2. Convert to csv
+3. Read line
+4. Use first element as id and element
+5. x, y, z
+6. Write to file
+7. Next line
+#+begin_src python :tangle genx-conv.py
+#!/usr/bin/python2
+# To use this script, open terminal, type "python thisscript.py xyzfile", then you will get the output in terminal
+
+from __future__ import print_function
+import csv,sys
+with open(sys.argv[1]) as xyzfile:
+    for line in xyzfile.readlines()[3:]:
+        array = line.split()
+        print("add_atom(" + "id='"+array[0]+"'"+","+"el='"+array[0]+"'"+','+'x='+array[1]+','+'y='+array[2] + ',' + 'z='+array[3] +")")
+#+end_src
