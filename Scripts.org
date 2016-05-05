@@ -491,3 +491,5 @@ with open(sys.argv[1]) as xyzfile:
         array = line.split()
         print("add_atom(" + "id='"+array[0]+"'"+","+"el='"+array[0]+"'"+','+'x='+array[1]+','+'y='+array[2] + ',' + 'z='+array[3] +")")
 #+end_src
+
+Seemed python's own split function recognize a lot of formats which is really of good help. 
